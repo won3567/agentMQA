@@ -1,16 +1,17 @@
 import os
 import json
 import time
-# import llama_local
+import llama_local
 import openrouter_client
 import re
-from rag import MedQARAGSystem
+from retriever import SemanticRetriever, CLSEmbedding
 
 
 # Augment the question with the chatGPT reasoning
 def augment_qa(augment_method):
     # client = llama_local.LlamaLocal()
     client = openrouter_client.OpenRouterClient(model="meta-llama/llama-3.1-8b-instruct")
+    rag = SemanticRetriever(CLSEmbedding())
 
     QA_dataset = json.load(open("gold/QAmedqa.json"))
     chatGPT_answer = json.load(open("gold/Gpt-4.1-mini.json"))
@@ -18,11 +19,7 @@ def augment_qa(augment_method):
     Llama_answer = json.load(open("gold/Llama-3.1-8B.json"))
     Llama_answer = Llama_answer["result"]
     chains = json.load(open("gold/chain.json"))["result"]
-    # rag = MedQARAGSystem(
-    #     corpus_path="textbooks/data-00000-of-00001.arrow",
-    #     tokenizer_path="models--BAAI--bge-m3", 
-    #     llm_model="meta-llama/llama-3.1-8b-instruct"
-    # )
+    
 
     count=0
     correct=0
@@ -35,8 +32,6 @@ def augment_qa(augment_method):
         if count > threshold:
             break
 
-        # # # if Llama answer is wrong and chatGPT answer is correct
-        # if ra["answer"] != QA_dataset[qa_id]['answer'] and chatGPT_answer[qa_id]["answer"] == QA_dataset[qa_id]['answer']:
         q = f'question: {QA_dataset[qa_id]["question"]} \noptions: {QA_dataset[qa_id]["options"]},'
         a = QA_dataset[qa_id]["answer"]
 
@@ -56,10 +51,11 @@ def augment_qa(augment_method):
             context = chatGPT_answer[qa_id]["reasoning"][:int(len(chatGPT_answer[qa_id]["reasoning"])/2)]
             llm_a = client.answer_question_half_reasoning(q, reasoning=context)
         elif augment_method == "rag":
-            llm_a = rag.answer_question(question=q,
-                                        top_k=5,
-                                        alpha=0.1,
-                                        verbose=False)["answer"]
+            corpus = json.load(open("gold/textbooks/corpus_1000.json"))
+            corpus = [c["contents"] for c in corpus]
+            retriever.build_index(corpus)
+            retrieved_contexts = rag.retrieve(query=q, top_k=5)
+            llm_a = client.answer_question(q, context=retrieved_contexts)
         elif augment_method == "by_chain":
             llm_a = client.answer_question_with_inference(q, inference=ra["inference_chain"])
 
@@ -93,6 +89,6 @@ def augment_qa(augment_method):
 
 
 
-# augment_method: ["by_hint", "prompt", "half_reasoning", "no_augment", "rag"]
+# augment_method: ["by_hint", "prompt", "half_reasoning", "no_augment", "rag", "by_chain"]
 augment_qa(augment_method="by_chain")
 

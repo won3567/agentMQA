@@ -14,11 +14,11 @@ class Embedding(Embeddings):
     """
     def __init__(self, model_name, **kwargs):
         self.device = ("cuda" if torch.cuda.is_available() else "cpu")
-        self.local_dir = "/Users/emowong/.cache/huggingface/hub/hub/models--BAAI--bge-m3/snapshots/5617a9f61b028005a4858fdac845db406aefb181"
+        self.local_dir = ""
         if model_name == "BAAI/bge-m3":
             self.model = BGEM3FlagModel(self.local_dir, local_files_only=True, **kwargs)
         else:
-            self.tokenizer = AutoTokenizer.from_pretrained(self.local_dir, local_files_only=True, device=self.device)
+            self.tokenizer = AutoTokenizer.from_pretrained(self.local_dir, local_files_only=True)
             self.model_hf = AutoModel.from_pretrained(self.local_dir, local_files_only=True)
     
     def embed_documents(self, texts, max_token=500):
