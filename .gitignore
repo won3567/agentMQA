@@ -208,3 +208,6 @@ __marimo__/
 
 # customize
 gold/
+corpus_embeddings/
+hybrid_index/
+test1.py
